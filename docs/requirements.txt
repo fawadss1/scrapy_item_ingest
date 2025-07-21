@@ -1,0 +1,13 @@
+Requirements for building the documentation.
+
+# Core Sphinx requirements
+sphinx>=5.0.0
+sphinx_rtd_theme>=1.2.0
+myst-parser>=0.18.0
+
+# Extensions
+sphinx-autodoc-typehints>=1.19.0
+sphinx-copybutton>=0.5.0
+
+# Development dependencies for docs
+furo>=2022.6.21  # Alternative theme option
