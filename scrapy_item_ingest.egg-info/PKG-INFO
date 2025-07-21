@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: scrapy_item_ingest
+Version: 0.2.0
+Summary: Scrapy pipeline + extension to insert items, requests, stats, and logs into a relational DB
+Requires-Python: >=3.9
+License-File: LICENSE
+Requires-Dist: psycopg2-binary
+Requires-Dist: mysql-connector-python
+Requires-Dist: itemadapter
+Requires-Dist: SQLAlchemy
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

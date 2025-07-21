@@ -1,0 +1,5 @@
+[scrapy.extensions]
+db_stats_logs = scrapy_item_ingest.extension:StatsAndLogExtension
+
+[scrapy.pipelines]
+db_ingest = scrapy_item_ingest.pipeline:DbInsertPipeline
