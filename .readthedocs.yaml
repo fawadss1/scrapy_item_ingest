@@ -10,15 +10,18 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.11"
-    # You can also specify other tools here like nodejs, rust, golang, etc.
+  jobs:
+    post_create_environment:
+      # Install poetry
+      - pip install --upgrade pip setuptools wheel
+    post_install:
+      # Install dependencies
+      - pip install --exists-action=w --no-cache-dir -e .[docs]
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
    configuration: docs/conf.py
-
-# If using Sphinx, optionally build your docs in additional formats such as PDF
-# formats:
-#    - pdf
+   fail_on_warning: false
 
 # Optionally declare the Python requirements required to build your docs
 python:

@@ -1,8 +1,11 @@
 from setuptools import setup, find_packages
 
 # Read the README file for long description
-with open("README.md", encoding="utf-8") as fh:
-    long_description = fh.read()
+try:
+    with open("README.md", "r", encoding="utf-8") as fh:
+        long_description = fh.read()
+except FileNotFoundError:
+    long_description = "A comprehensive Scrapy extension for ingesting scraped items, requests, and logs into PostgreSQL databases."
 
 setup(
     name="scrapy_item_ingest",
@@ -37,10 +40,10 @@ setup(
     ],
     keywords="scrapy, database, postgresql, web-scraping, data-pipeline",
     install_requires=[
-        "psycopg2-binary",
-        "mysql-connector-python",
-        "itemadapter",
-        "SQLAlchemy"
+        "scrapy>=2.5.0",
+        "psycopg2-binary>=2.8.0",
+        "itemadapter>=0.6.0",
+        "SQLAlchemy>=1.4.0",
     ],
     extras_require={
         "docs": [
@@ -65,8 +68,12 @@ setup(
         ],
     },
     entry_points={
-        "scrapy.pipelines": ["db_ingest = scrapy_item_ingest.pipeline:DbInsertPipeline"],
-        "scrapy.extensions": ["db_stats_logs = scrapy_item_ingest.extension:StatsAndLogExtension"],
+        "scrapy.pipelines": [
+            "db_ingest = scrapy_item_ingest.pipelines.main:DbInsertPipeline"
+        ],
+        "scrapy.extensions": [
+            "logging_ext = scrapy_item_ingest.extensions.logging:LoggingExtension"
+        ],
     },
     python_requires=">=3.7",
     include_package_data=True,

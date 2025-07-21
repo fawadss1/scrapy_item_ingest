@@ -10,6 +10,15 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
+# Mock imports for modules that might not be available during doc build
+autodoc_mock_imports = [
+    'scrapy',
+    'psycopg2',
+    'SQLAlchemy',
+    'itemadapter',
+    'twisted',
+]
+
 project = 'Scrapy Item Ingest'
 copyright = '2025, Fawad Ali'
 author = 'Fawad Ali'
@@ -66,6 +75,9 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+# Create _static directory if it doesn't exist
+os.makedirs('_static', exist_ok=True)
+
 # -- Extension configuration -------------------------------------------------
 
 # Napoleon settings
@@ -92,6 +104,10 @@ autodoc_default_options = {
     'undoc-members': True,
     'exclude-members': '__weakref__'
 }
+
+# Don't fail on import errors
+autodoc_typehints = 'description'
+autodoc_typehints_description_target = 'documented'
 
 # Intersphinx mapping
 intersphinx_mapping = {
