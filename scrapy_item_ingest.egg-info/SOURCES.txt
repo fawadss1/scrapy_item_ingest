@@ -6,6 +6,7 @@ scrapy_item_ingest.egg-info/PKG-INFO
 scrapy_item_ingest.egg-info/SOURCES.txt
 scrapy_item_ingest.egg-info/dependency_links.txt
 scrapy_item_ingest.egg-info/entry_points.txt
+scrapy_item_ingest.egg-info/not-zip-safe
 scrapy_item_ingest.egg-info/requires.txt
 scrapy_item_ingest.egg-info/top_level.txt
 scrapy_item_ingest/config/__init__.py
