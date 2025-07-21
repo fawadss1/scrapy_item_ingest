@@ -1,7 +1,7 @@
 Metadata-Version: 2.4
 Name: scrapy_item_ingest
-Version: 0.2.0
-Summary: Scrapy pipeline + extension to insert items, requests, stats, and logs into a relational DB
+Version: 0.1.0
+Summary: Scrapy extension for database ingestion with job/spider tracking
 Requires-Python: >=3.9
 License-File: LICENSE
 Requires-Dist: psycopg2-binary

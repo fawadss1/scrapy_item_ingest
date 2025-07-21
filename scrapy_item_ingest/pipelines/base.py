@@ -2,7 +2,6 @@
 Base pipeline functionality for scrapy_item_ingest.
 """
 import logging
-from scrapy import signals
 from ..config.settings import Settings, validate_settings
 from ..database.connection import DatabaseConnection
 from ..database.schema import SchemaManager
