@@ -59,7 +59,7 @@ For support and questions:
 
 ## Changelog
 
-### v0.1.0 (Current)
+### v0.1.2 (Current)
 
 - Initial release
 - Core pipeline functionality for items, requests, and logs

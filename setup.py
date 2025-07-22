@@ -2,14 +2,14 @@ from setuptools import setup, find_packages
 
 # Read the README file for long description
 try:
-    with open("README.md", "r", encoding="utf-8") as fh:
+    with open("README.md", encoding="utf-8") as fh:
         long_description = fh.read()
 except FileNotFoundError:
     long_description = "A comprehensive Scrapy extension for ingesting scraped items, requests, and logs into PostgreSQL databases."
 
 setup(
     name="scrapy_item_ingest",
-    version="0.1.0",
+    version="0.1.2",
     description="Scrapy extension for database ingestion with job/spider tracking",
     long_description=long_description,
     long_description_content_type="text/markdown",

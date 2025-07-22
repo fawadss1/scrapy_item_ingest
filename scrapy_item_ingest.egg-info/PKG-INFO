@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: scrapy_item_ingest
-Version: 0.1.0
+Version: 0.1.2
 Summary: Scrapy extension for database ingestion with job/spider tracking
 Home-page: https://github.com/fawadss1/scrapy_item_ingest
 Author: Fawad Ali
@@ -122,7 +122,7 @@ For support and questions:
 
 ## Changelog
 
-### v0.1.0 (Current)
+### v0.1.2 (Current)
 
 - Initial release
 - Core pipeline functionality for items, requests, and logs

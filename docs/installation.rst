@@ -48,7 +48,7 @@ If you're using Docker, add this to your ``requirements.txt``:
 
 .. code-block:: text
 
-   scrapy-item-ingest==0.1.0
+   scrapy-item-ingest==0.1.2
 
 Virtual Environment Setup
 ~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -54,12 +54,10 @@ class Settings:
         # Always return JOB_ID or fallback to None (spider name will be used)
         return self.crawler_settings.get('JOB_ID', None)
 
-    def get_identifier_column(self):
-        """Get the identifier column name based on mode"""
-        if self.create_tables:
-            return "spider"  # Use spider column when creating tables
-        else:
-            return "job_id"  # Use job_id column when using existing tables
+    @staticmethod
+    def get_identifier_column():
+        """Get the identifier column name"""
+        return "job_id"
 
     def get_identifier_value(self, spider):
         """Get the identifier value with smart fallback"""

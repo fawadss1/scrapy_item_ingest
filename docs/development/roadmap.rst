@@ -3,7 +3,7 @@ Roadmap
 
 This document outlines the planned development direction for Scrapy Item Ingest. The roadmap is organized by major version releases with estimated timelines and priorities.
 
-Current Version: 0.1.0
+Current Version: 0.1.2
 ----------------------
 
 **Status**: ✅ Released (July 2025)
