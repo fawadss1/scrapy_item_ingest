@@ -2,8 +2,8 @@
 Requests pipeline for tracking request information.
 """
 import logging
-import time
-from datetime import datetime, timezone
+from datetime import datetime
+import pytz
 from scrapy import signals
 from .base import BasePipeline
 from ..utils.fingerprint import get_request_fingerprint
@@ -91,14 +91,15 @@ class RequestsPipeline(BasePipeline):
         logger.info(f"Logging request for job_id {job_id}: {request.url}")
         fingerprint = get_request_fingerprint(request)
         parent_id, parent_url = self._get_parent_request_info(request, spider)
-        request_time = time.time()
-        created_at = datetime.now(timezone.utc)
+        tz = pytz.timezone(self.settings.get_tz())
+        request_time = datetime.now(tz).timestamp()
+        created_at = datetime.now(tz)
 
         # Store request start time for duration calculation
         self.request_start_times[fingerprint] = request_time
 
         sql = f"""
-        INSERT INTO {self.settings.db_requests_table} 
+        INSERT INTO {self.settings.db_requests_table}
         (job_id, url, method, fingerprint, parent_id, parent_url, created_at) 
         VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
         """
@@ -147,23 +148,24 @@ class RequestsPipeline(BasePipeline):
         self.current_response_url = response.url
 
         fingerprint = get_request_fingerprint(request)
-        response_time = time.time()
+        tz = pytz.timezone(self.settings.get_tz())
+        response_time = datetime.now(tz).timestamp()
 
         # Update the request log with response info
         try:
             sql = f"""
             UPDATE {self.settings.db_requests_table} 
-            SET status_code = %s, response_time = %s
-            WHERE job_id = %s AND fingerprint = %s AND status_code IS NULL
+            SET status_code = COALESCE(status_code, %s), response_time = COALESCE(response_time, %s)
+            WHERE job_id = %s AND fingerprint = %s
             """
             self.db.execute(sql, (
-                response.status,
+                response.status or 200,
                 response_time,
                 job_id,
                 fingerprint
             ))
             self.db.commit()
-            logger.info(f"Updated request status {response.status} and response_time for fingerprint {fingerprint}")
+            logger.info(f"Updated request status {response.status or 200} and response_time for fingerprint {fingerprint}")
         except Exception as e:
             logger.error(f"Failed to update request status: {e}")
             self.db.rollback()

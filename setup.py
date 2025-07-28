@@ -40,10 +40,11 @@ setup(
     ],
     keywords="scrapy, database, postgresql, web-scraping, data-pipeline",
     install_requires=[
-        "scrapy>=2.5.0",
-        "psycopg2-binary>=2.8.0",
-        "itemadapter>=0.6.0",
-        "SQLAlchemy>=1.4.0",
+        "scrapy>=2.13.3",
+        "psycopg2-binary>=2.9.10",
+        "itemadapter>=0.11.0",
+        "SQLAlchemy>=2.0.41",
+        "pytz>=2025.2",
     ],
     extras_require={
         "docs": [

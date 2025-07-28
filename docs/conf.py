@@ -59,24 +59,40 @@ html_theme_options = {
     'logo_only': False,
     'display_version': True,
     'prev_next_buttons_location': 'bottom',
-    'style_external_links': False,
+    'style_external_links': True,  # Enable external link styling
     'vcs_pageview_mode': '',
-    'style_nav_header_background': '#2980B9',
+    'style_nav_header_background': '#333333',  # Dark header background
     # Toc options
-    'collapse_navigation': True,
+    'collapse_navigation': False,  # Keep navigation expanded
     'sticky_navigation': True,
-    'navigation_depth': 4,
+    'navigation_depth': 4,  # Depth of navigation tree
     'includehidden': True,
-    'titles_only': False
+    'titles_only': False,  # Show full titles in navigation
 }
 
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
+# Add custom CSS for dark theme
 html_static_path = ['_static']
+html_css_files = [
+    'css/custom.css',  # Custom CSS for dark theme
+]
 
-# Create _static directory if it doesn't exist
+# Ensure _static directory exists
+import os
 os.makedirs('_static', exist_ok=True)
+
+# Create custom.css file for dark theme
+custom_css_path = os.path.join('_static', 'css')
+os.makedirs(custom_css_path, exist_ok=True)
+with open(os.path.join(custom_css_path, 'custom.css'), 'w') as f:
+    f.write("""
+    body {
+        background-color: #121212;
+        color: #ffffff;
+    }
+    a {
+        color: #1e90ff;
+    }
+    """)
 
 # -- Extension configuration -------------------------------------------------
 

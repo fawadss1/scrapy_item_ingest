@@ -26,10 +26,11 @@ Classifier: Topic :: Database
 Requires-Python: >=3.7
 Description-Content-Type: text/markdown
 License-File: LICENSE
-Requires-Dist: scrapy>=2.5.0
-Requires-Dist: psycopg2-binary>=2.8.0
-Requires-Dist: itemadapter>=0.6.0
-Requires-Dist: SQLAlchemy>=1.4.0
+Requires-Dist: scrapy>=2.13.3
+Requires-Dist: psycopg2-binary>=2.9.10
+Requires-Dist: itemadapter>=0.11.0
+Requires-Dist: SQLAlchemy>=2.0.41
+Requires-Dist: pytz>=2025.2
 Provides-Extra: docs
 Requires-Dist: sphinx>=5.0.0; extra == "docs"
 Requires-Dist: sphinx_rtd_theme>=1.2.0; extra == "docs"
