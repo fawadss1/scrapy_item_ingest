@@ -98,15 +98,14 @@ class RequestsPipeline(BasePipeline):
 
         sql = f"""
         INSERT INTO {self.settings.db_requests_table}
-        (job_id, url, method,status, fingerprint, parent_id, parent_url, created_at) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+        (job_id, url, method, fingerprint, parent_id, parent_url, created_at) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
         """
         try:
             result = self.db.execute(sql, (
                 job_id,
                 request.url,
                 request.method,
-                request.status,
                 fingerprint,
                 parent_id,
                 parent_url,
