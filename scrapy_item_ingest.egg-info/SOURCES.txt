@@ -25,3 +25,4 @@ scrapy_item_ingest/pipelines/requests.py
 scrapy_item_ingest/utils/__init__.py
 scrapy_item_ingest/utils/fingerprint.py
 scrapy_item_ingest/utils/serialization.py
+scrapy_item_ingest/utils/time.py

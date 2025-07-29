@@ -2,11 +2,10 @@
 Base extension functionality for scrapy_item_ingest.
 """
 import logging
-from datetime import datetime
 from sqlalchemy import create_engine, text
 from ..config.settings import validate_settings
 from scrapy_item_ingest.config.settings import Settings
-import pytz
+from ..utils.time import get_current_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -69,12 +68,11 @@ class BaseExtension:
                 VALUES (:identifier, :type, :message, :timestamp)
             """)
             with engine.connect() as connection:
-                tz = pytz.timezone(self.settings.get_tz())
                 connection.execute(stmt, {
                     "identifier": identifier_value,
                     "type": log_level,
                     "message": message,
-                    "timestamp": datetime.now(tz)
+                    "timestamp": get_current_datetime(self.settings)
                 })
                 connection.commit()
                 logger.info(f"Logged {log_level} for {identifier_column} {identifier_value}")

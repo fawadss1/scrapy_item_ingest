@@ -2,11 +2,10 @@
 Requests pipeline for tracking request information.
 """
 import logging
-from datetime import datetime
-import pytz
 from scrapy import signals
 from .base import BasePipeline
 from ..utils.fingerprint import get_request_fingerprint
+from ..utils.time import get_current_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -91,23 +90,23 @@ class RequestsPipeline(BasePipeline):
         logger.info(f"Logging request for job_id {job_id}: {request.url}")
         fingerprint = get_request_fingerprint(request)
         parent_id, parent_url = self._get_parent_request_info(request, spider)
-        tz = pytz.timezone(self.settings.get_tz())
-        request_time = datetime.now(tz).timestamp()
-        created_at = datetime.now(tz)
+        created_at = get_current_datetime(self.settings)
+        request_time = created_at.timestamp()
 
         # Store request start time for duration calculation
         self.request_start_times[fingerprint] = request_time
 
         sql = f"""
         INSERT INTO {self.settings.db_requests_table}
-        (job_id, url, method, fingerprint, parent_id, parent_url, created_at) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+        (job_id, url, method,status, fingerprint, parent_id, parent_url, created_at) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
         """
         try:
             result = self.db.execute(sql, (
                 job_id,
                 request.url,
                 request.method,
+                request.status,
                 fingerprint,
                 parent_id,
                 parent_url,
@@ -148,8 +147,7 @@ class RequestsPipeline(BasePipeline):
         self.current_response_url = response.url
 
         fingerprint = get_request_fingerprint(request)
-        tz = pytz.timezone(self.settings.get_tz())
-        response_time = datetime.now(tz).timestamp()
+        response_time = get_current_datetime(self.settings).timestamp()
 
         # Update the request log with response info
         try:

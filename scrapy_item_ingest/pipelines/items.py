@@ -2,12 +2,11 @@
 Items pipeline for storing scraped items.
 """
 import logging
-from datetime import datetime
 from itemadapter import ItemAdapter
 from scrapy.exceptions import DropItem
 from .base import BasePipeline
 from ..utils.serialization import serialize_item_data
-import pytz
+from ..utils.time import get_current_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +21,7 @@ class ItemsPipeline(BasePipeline):
         logger.info(f"Processing item for job_id {job_id}: {item}")
         adapter = ItemAdapter(item)
         item_dict = adapter.asdict()
-        tz = pytz.timezone(self.settings.get_tz())
-        created_at = datetime.now(tz)
+        created_at = get_current_datetime(self.settings)
 
         logger.info(f"Item dict prepared: {item_dict}")
 
