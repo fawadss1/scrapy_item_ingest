@@ -1,67 +1,46 @@
-"""
-Database connection utilities for scrapy_item_ingest.
-"""
+# scrapy_item_ingest/database/connection.py
+
 import psycopg2
-import logging
-from urllib.parse import urlparse, unquote
-
-logger = logging.getLogger(__name__)
+from scrapy.utils.project import get_project_settings
 
 
-class DatabaseConnection:
-    """Database connection manager"""
+class DBConnection:
+    """
+    Handles a single persistent PostgreSQL connection for the entire spider runtime.
+    Avoids reconnecting for each item, improving performance and reliability.
+    """
 
-    def __init__(self, db_url):
-        self.db_url = db_url
-        self.conn = None
-        self.cur = None
+    _instance = None  # Singleton instance
+    _connection = None
 
-    def connect(self):
-        """Establish database connection"""
-        try:
-            result = urlparse(self.db_url)
-            user = result.username
-            password = unquote(result.password) if result.password else None
-            host = result.hostname
-            port = result.port
-            dbname = result.path.lstrip('/')
+    def __new__(cls):
+        # Ensure only one instance exists (singleton)
+        if cls._instance is None:
+            cls._instance = super(DBConnection, cls).__new__(cls)
+            cls._instance._initialize_connection()
+        return cls._instance
 
-            self.conn = psycopg2.connect(
-                host=host, port=port, dbname=dbname,
-                user=user, password=password
-            )
-            self.cur = self.conn.cursor()
-            logger.info("Database connection established")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to connect to database: {e}")
-            return False
+    def _initialize_connection(self):
+        """Initialize the PostgreSQL connection once."""
+        settings = get_project_settings()
+        self._connection = psycopg2.connect(
+            host=settings.get("DB_HOST"),
+            port=settings.get("DB_PORT"),
+            user=settings.get("DB_USER"),
+            password=settings.get("DB_PASSWORD"),
+            dbname=settings.get("DB_NAME")
+        )
+        self._connection.autocommit = False  # manual commit per item
+        print("✅ Persistent DB connection established once.")
+
+    def get_connection(self):
+        """Return the active connection (always the same one)."""
+        if self._connection.closed:
+            self._initialize_connection()
+        return self._connection
 
     def close(self):
-        """Close database connection"""
-        if hasattr(self, 'cur') and self.cur:
-            self.cur.close()
-        if hasattr(self, 'conn') and self.conn:
-            self.conn.close()
-        logger.info("Database connection closed")
-
-    def execute(self, sql, params=None):
-        """Execute SQL query"""
-        try:
-            if params:
-                self.cur.execute(sql, params)
-            else:
-                self.cur.execute(sql)
-            return self.cur.fetchone() if self.cur.description else None
-        except Exception as e:
-            logger.error(f"Failed to execute query: {e}")
-            self.conn.rollback()
-            raise
-
-    def commit(self):
-        """Commit transaction"""
-        self.conn.commit()
-
-    def rollback(self):
-        """Rollback transaction"""
-        self.conn.rollback()
+        """Close connection gracefully when the spider ends."""
+        if self._connection and not self._connection.closed:
+            self._connection.close()
+            print("🧹 Database connection closed cleanly.")

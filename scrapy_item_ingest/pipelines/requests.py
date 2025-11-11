@@ -15,16 +15,16 @@ class RequestsPipeline(BasePipeline):
 
     def __init__(self, settings):
         super().__init__(settings)
-        self.request_start_times = {}  # Track request start times
         self.request_id_map = {}  # Track fingerprint to database ID mapping
         self.url_to_id_map = {}  # Track URL to database ID mapping
         self.current_response_url = None  # Track current response being processed
+        self.request_start_times = {}  # Track request start times for response_time calculation
 
     @classmethod
     def from_crawler(cls, crawler):
         """Create pipeline instance from crawler"""
         pipeline = super().from_crawler(crawler)
-        # Connect to request signals to automatically log requests
+        # Connect to both signals to track request timing
         crawler.signals.connect(pipeline.request_scheduled, signal=signals.request_scheduled)
         crawler.signals.connect(pipeline.response_received, signal=signals.response_received)
         return pipeline
@@ -83,23 +83,32 @@ class RequestsPipeline(BasePipeline):
 
         return parent_id, parent_url
 
-    def log_request(self, request, spider):
-        """Log request to database"""
+    def log_request(self, request, spider, response=None):
+        """Log request to database with complete information"""
         job_id = self.settings.get_identifier_value(spider)
 
         logger.info(f"Logging request for job_id {job_id}: {request.url}")
         fingerprint = get_request_fingerprint(request)
         parent_id, parent_url = self._get_parent_request_info(request, spider)
         created_at = get_current_datetime(self.settings)
-        request_time = created_at.timestamp()
 
-        # Store request start time for duration calculation
-        self.request_start_times[fingerprint] = request_time
+        # Get status code and response time if response is available
+        status_code = response.status if response else None
+        response_time = None
+        
+        if response:
+            fingerprint = get_request_fingerprint(request)
+            request_start_time = self.request_start_times.get(fingerprint)
+            if request_start_time:
+                current_time = created_at.timestamp()
+                response_time = current_time - request_start_time
+                # Clean up the start time to free memory
+                self.request_start_times.pop(fingerprint, None)
 
         sql = f"""
         INSERT INTO {self.settings.db_requests_table}
-        (job_id, url, method, fingerprint, parent_id, parent_url, created_at) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+        (job_id, url, method, fingerprint, parent_id, parent_url, status_code, response_time, created_at) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
         """
         try:
             result = self.db.execute(sql, (
@@ -109,6 +118,8 @@ class RequestsPipeline(BasePipeline):
                 fingerprint,
                 parent_id,
                 parent_url,
+                status_code,
+                response_time,
                 created_at
             ))
 
@@ -121,6 +132,8 @@ class RequestsPipeline(BasePipeline):
                 self.db.commit()
 
                 log_msg = f"Successfully logged request for job_id {job_id} with fingerprint {fingerprint} (ID: {record_id})"
+                if response:
+                    log_msg += f" (status: {response.status}, response_time: {response_time:.3f}s)" if response_time else f" (status: {response.status})"
                 if parent_id:
                     log_msg += f" (parent ID: {parent_id}, parent URL: {parent_url})"
                 else:
@@ -131,13 +144,16 @@ class RequestsPipeline(BasePipeline):
             self.db.rollback()
 
     def request_scheduled(self, request, spider):
-        """Called when a request is scheduled"""
+        """Called when a request is scheduled - track start time"""
+        fingerprint = get_request_fingerprint(request)
+        current_time = get_current_datetime(self.settings).timestamp()
+        self.request_start_times[fingerprint] = current_time
+        
         job_id = self.settings.get_identifier_value(spider)
-        logger.info(f"Request scheduled for job_id {job_id}: {request.url}")
-        self.log_request(request, spider)
+        logger.debug(f"Request scheduled for job_id {job_id}: {request.url} (fingerprint: {fingerprint})")
 
     def response_received(self, response, request, spider):
-        """Called when a response is received"""
+        """Called when a response is received - log request with complete info"""
         job_id = self.settings.get_identifier_value(spider)
 
         logger.info(f"Response received for job_id {job_id}: {response.url} (status: {response.status})")
@@ -145,24 +161,5 @@ class RequestsPipeline(BasePipeline):
         # Set current response URL for parent tracking
         self.current_response_url = response.url
 
-        fingerprint = get_request_fingerprint(request)
-        response_time = get_current_datetime(self.settings).timestamp()
-
-        # Update the request log with response info
-        try:
-            sql = f"""
-            UPDATE {self.settings.db_requests_table} 
-            SET status_code = COALESCE(status_code, %s), response_time = COALESCE(response_time, %s)
-            WHERE job_id = %s AND fingerprint = %s
-            """
-            self.db.execute(sql, (
-                response.status or 200,
-                response_time,
-                job_id,
-                fingerprint
-            ))
-            self.db.commit()
-            logger.info(f"Updated request status {response.status or 200} and response_time for fingerprint {fingerprint}")
-        except Exception as e:
-            logger.error(f"Failed to update request status: {e}")
-            self.db.rollback()
+        # Log the request with complete response information
+        self.log_request(request, spider, response)
