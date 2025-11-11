@@ -6,30 +6,65 @@ import threading
 from typing import List
 from scrapy import signals
 from .base import BaseExtension
+import time
 
 logger = logging.getLogger(__name__)
 
 
 class AllowedLoggerFilter(logging.Filter):
-    """Allow records whose logger name starts with any of the allowed prefixes."""
-    def __init__(self, allowed_prefixes: List[str]):
+    """Filter that first checks an allowlist of logger prefixes, then applies
+    optional exclusions by logger prefixes and/or message substrings.
+    """
+    def __init__(self, allowed_prefixes: List[str], excluded_prefixes: List[str] | None = None, excluded_patterns: List[str] | None = None):
         super().__init__()
         # Normalize and deduplicate
         self._allowed = sorted(set(p for p in allowed_prefixes if p), key=len)
+        self._excluded = sorted(set(p for p in (excluded_prefixes or []) if p), key=len)
+        self._excluded_patterns = [s for s in (excluded_patterns or []) if s]
+
+    def _is_allowed_logger(self, name: str) -> bool:
+        for p in self._allowed:
+            if name == p or name.startswith(p + "."):
+                return True
+        return False
+
+    def _is_excluded_logger(self, name: str) -> bool:
+        for p in self._excluded:
+            if name == p or name.startswith(p + "."):
+                return True
+        return False
+
+    def _matches_excluded_pattern(self, message: str) -> bool:
+        for pat in self._excluded_patterns:
+            try:
+                if pat in message:
+                    return True
+            except Exception:
+                # Be safe on any unexpected type issues
+                continue
+        return False
 
     def filter(self, record: logging.LogRecord) -> bool:  # type: ignore[override]
         try:
             name = record.name
-            for p in self._allowed:
-                if name == p or name.startswith(p + "."):
-                    return True
-            return False
+            if not self._is_allowed_logger(name):
+                return False
+            # Exclude by logger name
+            if self._is_excluded_logger(name):
+                return False
+            # Exclude by substring patterns in the formatted message or raw msg
+            msg = str(record.getMessage())
+            if self._matches_excluded_pattern(msg):
+                return False
+            return True
         except Exception:
             return False
 
 
 class DatabaseLogHandler(logging.Handler):
-    """Custom logging handler to save all log records to the database in batches."""
+    """Custom logging handler to save all log records to the database in batches,
+    with a short TTL-based de-duplication to avoid duplicates due to logger propagation.
+    """
     _local = threading.local()
     BATCH_SIZE = 100
 
@@ -38,6 +73,37 @@ class DatabaseLogHandler(logging.Handler):
         self.extension = extension
         self.spider = spider
         self._buffer = []
+        # De-duplication cache: fingerprint -> last_seen_ts
+        try:
+            ttl = extension._get_setting('LOG_DB_DEDUP_TTL', 3)
+            self._dedup_ttl = float(ttl) if ttl is not None else 3.0
+        except Exception:
+            self._dedup_ttl = 3.0
+        self._seen = {}
+        self._seen_cleanup_counter = 0
+
+    def _fingerprint(self, record: logging.LogRecord, formatted_msg: str):
+        # Use logger name, level, and formatted message for stable fingerprint
+        return (record.name, record.levelno, formatted_msg)
+
+    def _dedup_allow(self, record: logging.LogRecord, formatted_msg: str) -> bool:
+        now = time.time()
+        fp = self._fingerprint(record, formatted_msg)
+        last = self._seen.get(fp)
+        if last is not None and (now - last) < self._dedup_ttl:
+            return False
+        self._seen[fp] = now
+        # Periodically cleanup old entries to keep the cache small
+        self._seen_cleanup_counter += 1
+        if self._seen_cleanup_counter % 256 == 0:
+            cutoff = now - self._dedup_ttl
+            try:
+                for k, ts in list(self._seen.items()):
+                    if ts < cutoff:
+                        self._seen.pop(k, None)
+            except Exception:
+                self._seen.clear()
+        return True
 
     def emit(self, record):
         if getattr(self._local, 'in_emit', False):
@@ -46,6 +112,8 @@ class DatabaseLogHandler(logging.Handler):
         try:
             # Format the log message
             msg = self.format(record)
+            if not self._dedup_allow(record, msg):
+                return
             level = record.levelname
             self._buffer.append((self.spider, level, msg))
             if len(self._buffer) >= self.BATCH_SIZE:
@@ -76,6 +144,7 @@ class LoggingExtension(BaseExtension):
         self._db_log_handler = None
         self._spider = None
         self._logger_refs = []  # list of loggers we attached to
+        self._orig_levels = {}  # remember original logger levels to restore
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -86,6 +155,11 @@ class LoggingExtension(BaseExtension):
         crawler.signals.connect(ext.spider_closed, signal=signals.spider_closed)
         crawler.signals.connect(ext.spider_error, signal=signals.spider_error)
         crawler.signals.connect(ext.item_dropped, signal=signals.item_dropped)
+        # Ensure we flush any late records when the engine stops
+        try:
+            crawler.signals.connect(ext.engine_stopped, signal=signals.engine_stopped)
+        except Exception:
+            pass
         return ext
 
     def _get_setting(self, name, default=None):
@@ -95,19 +169,58 @@ class LoggingExtension(BaseExtension):
             return default
 
     def _parse_logger_list(self, spider_logger_name: str) -> List[str]:
-        # Default: spider logger + 'scrapy'
-        default_list = [spider_logger_name, 'scrapy']
+        # Always include spider logger and 'scrapy' namespace
+        base_list = {spider_logger_name, 'scrapy'}
         raw = self._get_setting('LOG_DB_LOGGERS', None)
+        if raw is None:
+            return list(base_list)
+        user_list: List[str]
+        if isinstance(raw, (list, tuple)):
+            user_list = [str(x) for x in raw if x]
+        else:
+            # Comma-separated string
+            user_list = [p.strip() for p in str(raw).split(',') if p.strip()]
+        # Merge with base_list to guarantee scrapy + spider are captured
+        return list(base_list.union(user_list))
+
+    def _parse_excluded_logger_list(self) -> List[str]:
+        """Return excluded logger prefixes. Defaults to filter out scraper noise."""
+        raw = self._get_setting('LOG_DB_EXCLUDE_LOGGERS', None)
+        default_list = ['scrapy.core.scraper']
         if raw is None:
             return default_list
         if isinstance(raw, (list, tuple)):
             return [str(x) for x in raw if x]
-        # Comma-separated string
+        return [p.strip() for p in str(raw).split(',') if p.strip()]
+
+    def _parse_excluded_patterns(self) -> List[str]:
+        """Return excluded substring patterns. Defaults to drop 'Scraped from <' lines."""
+        raw = self._get_setting('LOG_DB_EXCLUDE_PATTERNS', None)
+        default_list = ['Scraped from <']
+        if raw is None:
+            return default_list
+        if isinstance(raw, (list, tuple)):
+            return [str(x) for x in raw if x]
         return [p.strip() for p in str(raw).split(',') if p.strip()]
 
     def _get_level(self):
-        raw = str(self._get_setting('LOG_DB_LEVEL', 'INFO')).upper()
-        return getattr(logging, raw, logging.INFO)
+        # Default to DEBUG so DB can capture detailed Scrapy lines like "Crawled (200) ..."
+        raw = str(self._get_setting('LOG_DB_LEVEL', 'DEBUG')).upper()
+        return getattr(logging, raw, logging.DEBUG)
+
+    def _get_capture_level(self):
+        """Return the logger capture level used for loggers we attach to.
+        This allows capturing more verbose records (e.g., DEBUG) for DB only,
+        without impacting console verbosity.
+        """
+        raw = self._get_setting('LOG_DB_CAPTURE_LEVEL', None)
+        if raw is None:
+            # Default to the same level as DB store level if no override provided
+            return self._get_level()
+        try:
+            return getattr(logging, str(raw).upper(), self._get_level())
+        except Exception:
+            return self._get_level()
 
     def _make_formatter(self):
         fmt = self._get_setting('LOG_FORMAT', '%(asctime)s [%(name)s] %(levelname)s: %(message)s')
@@ -122,16 +235,38 @@ class LoggingExtension(BaseExtension):
         identifier_column, identifier_value = self.get_identifier_info(spider)
         message = f"{identifier_column.title()} {identifier_value} started"
 
-        # Resolve underlying spider logger and Scrapy framework logger
+        # Resolve underlying spider logger and limit attachment to top-level loggers
+        # to avoid duplicate captures via propagation.
         base_spider_logger = getattr(spider.logger, 'logger', None) or logging.getLogger(spider.name)
-        scrapy_logger = logging.getLogger('scrapy')
+        logger_names = [
+            base_spider_logger.name,
+            'scrapy',
+        ]
         self._spider = spider
+
+        # Determine capture level (how much we receive) and store original levels
+        capture_level = self._get_capture_level()
+        logger_objs = []
+        for name in dict.fromkeys(logger_names):  # de-duplicate while preserving order
+            try:
+                lg = logging.getLogger(name)
+                logger_objs.append(lg)
+                self._orig_levels[lg] = lg.level
+                lg.setLevel(capture_level)
+            except Exception:
+                pass
 
         # Build allowed prefixes and handler
         allowed_prefixes = self._parse_logger_list(base_spider_logger.name)
+        # Ensure core namespaces are included in filter too
+        allowed_prefixes = list(set(allowed_prefixes + [
+            'scrapy', 'scrapy.core', 'scrapy.core.engine', 'scrapy.core.scraper', 'scrapy.core.downloader'
+        ]))
         handler = DatabaseLogHandler(self, spider)
-        handler.setLevel(self._get_level())
-        handler.addFilter(AllowedLoggerFilter(allowed_prefixes))
+        handler.setLevel(self._get_level())  # what we store (min level)
+        excluded_loggers = self._parse_excluded_logger_list()
+        excluded_patterns = self._parse_excluded_patterns()
+        handler.addFilter(AllowedLoggerFilter(allowed_prefixes, excluded_loggers, excluded_patterns))
         # Configure batch size if provided
         try:
             batch_size = int(self._get_setting('LOG_DB_BATCH_SIZE', handler.BATCH_SIZE))
@@ -142,21 +277,21 @@ class LoggingExtension(BaseExtension):
         # Set formatter to mirror console output
         handler.setFormatter(self._make_formatter())
 
-        # Prevent duplicate attachments: check both loggers
+        # Prevent duplicate attachments
         def already_attached(logger_obj):
             for h in getattr(logger_obj, 'handlers', []):
                 if isinstance(h, DatabaseLogHandler) and getattr(h, 'spider', None) is spider and getattr(h, 'extension', None) is self:
                     return True
             return False
 
-        # Attach to spider logger
-        if not already_attached(base_spider_logger):
-            base_spider_logger.addHandler(handler)
-            self._logger_refs.append(base_spider_logger)
-        # Also attach to Scrapy framework logger
-        if not already_attached(scrapy_logger):
-            scrapy_logger.addHandler(handler)
-            self._logger_refs.append(scrapy_logger)
+        # Attach to spider logger and Scrapy-related loggers
+        for lg in logger_objs:
+            try:
+                if not already_attached(lg):
+                    lg.addHandler(handler)
+                    self._logger_refs.append(lg)
+            except Exception:
+                pass
 
         # Keep reference so we can flush/remove later
         self._db_log_handler = handler
@@ -182,6 +317,15 @@ class LoggingExtension(BaseExtension):
                     lg.removeHandler(self._db_log_handler)
             except Exception:
                 pass
+        # Restore original logger levels
+        try:
+            for lg, orig_level in self._orig_levels.items():
+                try:
+                    lg.setLevel(orig_level)
+                except Exception:
+                    pass
+        finally:
+            self._orig_levels = {}
         # Clear references
         self._db_log_handler = None
         self._spider = None
