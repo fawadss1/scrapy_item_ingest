@@ -5,7 +5,7 @@ from typing import Optional, Iterable, Any
 
 import psycopg2
 from psycopg2 import OperationalError
-from scrapy.utils.project import get_project_settings
+from urllib.parse import urlsplit, urlunsplit, quote, unquote
 
 
 class DBConnection:
@@ -34,6 +34,34 @@ class DBConnection:
                 # Do not auto-reconnect here; next use will reconnect if needed
         return cls._instance
 
+    def _normalize_dsn(self, dsn: str) -> str:
+        """Normalize a PostgreSQL DSN/URL by URL-encoding credentials if needed.
+        Handles passwords that mistakenly include raw '@' or '$' by treating the last
+        '@' as the boundary between credentials and host.
+        """
+        try:
+            if "://" not in dsn:
+                return dsn
+            scheme, rest = dsn.split("://", 1)
+            # Separate netloc and remaining path/query/fragment
+            if "/" in rest:
+                netloc, tail = rest.split("/", 1)
+                tail = "/" + tail
+            else:
+                netloc, tail = rest, ""
+            if "@" in netloc:
+                userinfo, hostport = netloc.rsplit("@", 1)
+                if ":" in userinfo:
+                    user, pwd = userinfo.split(":", 1)
+                    # Encode only if password contains reserved characters
+                    if any(c in pwd for c in "@:$ /\\"):
+                        user_enc = quote(unquote(user), safe="")
+                        pwd_enc = quote(pwd, safe="")
+                        netloc = f"{user_enc}:{pwd_enc}@{hostport}"
+            return f"{scheme}://{netloc}{tail}"
+        except Exception:
+            return dsn
+
     def _initialize_connection(self):
         """Initialize the PostgreSQL connection once (or reconnect if closed)."""
         if self._connection is not None and getattr(self._connection, "closed", 0) == 0:
@@ -43,8 +71,13 @@ class DBConnection:
         try:
             if self._db_url:
                 source = "db_url"
-                self._connection = psycopg2.connect(self._db_url)
+                dsn = self._normalize_dsn(self._db_url)
+                if dsn != self._db_url:
+                    self._logger.info("Normalized DB_URL for connection (credential encoding applied).")
+                self._connection = psycopg2.connect(dsn)
             else:
+                # Lazy import to avoid module-level dependency on Scrapy
+                from scrapy.utils.project import get_project_settings
                 settings = get_project_settings()
                 source = "Scrapy settings"
                 self._connection = psycopg2.connect(
