@@ -1,114 +1,30 @@
 Utilities API Reference
 ======================
 
-This section provides detailed API documentation for utility functions and helper classes in Scrapy Item Ingest.
+Minimal, auto-generated docs for utility modules.
 
-.. currentmodule:: scrapy_item_ingest.utils
-
-Data Serialization
-------------------
+Serialization
+-------------
 
 .. automodule:: scrapy_item_ingest.utils.serialization
    :members:
-   :undoc-members:
 
-Item Serialization Functions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Fingerprint
+-----------
 
-.. autofunction:: serialize_item
+.. automodule:: scrapy_item_ingest.utils.fingerprint
+   :members:
 
-   Convert Scrapy items or dictionaries to JSON-serializable format.
+Time helpers
+------------
 
-   :param item: Item to serialize
-   :type item: scrapy.Item, dict, or any object
-   :returns: JSON-serializable dictionary
-   :rtype: dict
-   :raises: SerializationError if item contains non-serializable objects
+.. automodule:: scrapy_item_ingest.utils.time
+   :members:
 
-   **Features:**
-
-   * Handles Scrapy Item objects
-   * Converts datetime objects to ISO format
-   * Handles Decimal numbers
-   * Processes nested data structures
-   * Removes non-serializable objects with warnings
-
-   **Example:**
-
-   .. code-block:: python
-
-      from datetime import datetime
-      from decimal import Decimal
-      from scrapy_item_ingest.utils.serialization import serialize_item
-
-      item = {
-          'name': 'Product Name',
-          'price': Decimal('29.99'),
-          'created_at': datetime.now(),
-          'features': ['feature1', 'feature2'],
-          'metadata': {
-              'source': 'website',
-              'valid': True
-          }
-      }
-
-      serialized = serialize_item(item)
-      # Result: All fields converted to JSON-compatible types
-
-.. autofunction:: clean_item_data
-
-   Clean and normalize item data for database storage.
-
-   :param item: Raw item data
-   :type item: dict
-   :returns: Cleaned item data
-   :rtype: dict
-
-   **Cleaning Operations:**
-
-   * Removes empty strings and None values (optional)
-   * Trims whitespace from string values
-   * Normalizes numeric values
-   * Validates field names
-   * Converts field types as needed
-
-   **Example:**
-
-   .. code-block:: python
-
-      raw_item = {
-          'title': '  Product Title  ',
-          'price': '29.99',
-          'description': '',
-          'tags': ['  tag1  ', '  tag2  ']
-      }
-
-      cleaned = clean_item_data(raw_item)
-      # Result: Trimmed strings, converted types, removed empty fields
-
-.. autofunction:: validate_item_structure
-
-   Validate item structure against expected schema.
-
-   :param item: Item to validate
-   :type item: dict
-   :param schema: Validation schema (optional)
-   :type schema: dict
-   :returns: Validation results
-   :rtype: dict
-
-   **Example:**
-
-   .. code-block:: python
-
-      schema = {
-          'required_fields': ['title', 'url'],
-          'field_types': {
-              'title': str,
-              'price': (int, float),
-              'tags': list
-          },
-          'max_lengths': {
+Notes
+-----
+- These helpers are used by pipelines/extensions; they are safe to import in user code.
+- See `quickstart` and `examples` for practical usage.
               'title': 200,
               'description': 1000
           }

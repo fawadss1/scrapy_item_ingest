@@ -1,114 +1,27 @@
 Configuration API Reference
 ============================
 
-This section provides detailed API documentation for configuration management in Scrapy Item Ingest.
+Minimal, auto-generated docs for configuration.
 
-.. currentmodule:: scrapy_item_ingest.config
-
-Configuration Classes
---------------------
+.. currentmodule:: scrapy_item_ingest.config.settings
 
 Settings
-~~~~~~~~
+--------
 
 .. autoclass:: Settings
    :members:
-   :undoc-members:
    :show-inheritance:
 
-   Configuration management class that handles all settings validation and default values.
+Utilities
+---------
 
-   **Core Settings:**
+.. autofunction:: validate_settings
 
-   .. attribute:: DB_URL
-
-      PostgreSQL database connection string.
-
-      :type: str
-      :required: True
-
-      **Format:** ``postgresql://username:password@host:port/database``
-
-      **Examples:**
-
-      .. code-block:: python
-
-         DB_URL = 'postgresql://scrapy:password@localhost:5432/scrapy_data'
-         DB_URL = 'postgresql://user:pass@prod-db.example.com:5432/production'
-
-   .. attribute:: CREATE_TABLES
-
-      Whether to automatically create database tables if they don't exist.
-
-      :type: bool
-      :default: True
-
-      **Usage:**
-
-      .. code-block:: python
-
-         # Development - auto-create tables
-         CREATE_TABLES = True
-
-         # Production - use existing tables
-         CREATE_TABLES = False
-
-   .. attribute:: JOB_ID
-
-      Unique identifier for the crawl job. Used to group related data.
-
-      :type: str or int
-      :default: None (uses spider name)
-
-      **Examples:**
-
-      .. code-block:: python
-
-         JOB_ID = 'daily_crawl_20250721'
-         JOB_ID = 12345
-         JOB_ID = f'batch_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
-
-   **Advanced Settings:**
-
-   .. attribute:: DB_SETTINGS
-
-      Advanced database connection parameters.
-
-      :type: dict
-      :default: {}
-
-      **Options:**
-
-      .. code-block:: python
-
-         DB_SETTINGS = {
-             'pool_size': 20,           # Connection pool size
-             'max_overflow': 30,        # Max additional connections
-             'pool_timeout': 30,        # Connection timeout
-             'pool_recycle': 3600,      # Connection recycling time
-             'pool_pre_ping': True,     # Test connections
-         }
-
-   .. attribute:: TABLE_NAMES
-
-      Custom table names for database tables.
-
-      :type: dict
-      :default: {'items': 'job_items', 'requests': 'job_requests', 'logs': 'job_logs'}
-
-      **Customization:**
-
-      .. code-block:: python
-
-         TABLE_NAMES = {
-             'items': 'custom_items',
-             'requests': 'custom_requests',
-             'logs': 'custom_logs'
-         }
-
-   .. attribute:: BATCH_SETTINGS
-
-      Batch processing configuration for performance optimization.
+Notes
+-----
+- Configure DB via `DB_URL` or discrete fields (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`).
+- Default tables: `job_items`, `job_requests`, `job_logs`.
+- See `configuration` and `quickstart` for practical examples.
 
       :type: dict
       :default: {'size': 100, 'timeout': 30}

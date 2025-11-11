@@ -1,98 +1,74 @@
-Scrapy Item Ingest Documentation
-==================================
+Scrapy Item Ingest
+===================
 
-**A comprehensive Scrapy extension for ingesting scraped items, requests, and logs into PostgreSQL databases with advanced tracking capabilities.**
+Save your Scrapy items, requests, and logs to PostgreSQL with a minimal setup.
 
-.. image:: https://img.shields.io/badge/python-3.7+-blue.svg
-   :target: https://www.python.org/downloads/
-   :alt: Python 3.7+
+Quick Start
+-----------
 
-.. image:: https://img.shields.io/badge/database-PostgreSQL-blue.svg
-   :target: https://www.postgresql.org/
-   :alt: PostgreSQL
+1) Install
+~~~~~~~~~~
 
-.. image:: https://img.shields.io/badge/license-MIT-green.svg
-   :target: https://github.com/fawadss1/scrapy_item_ingest/blob/main/LICENSE
-   :alt: License
+.. code-block:: bash
 
-Welcome to the documentation for **Scrapy Item Ingest**, a powerful extension that seamlessly integrates your Scrapy spiders with PostgreSQL databases for comprehensive data storage and tracking.
+   pip install scrapy-item-ingest
 
-🚀 Key Features
---------------
+2) Enable in settings.py
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-* **Real-time Data Ingestion**: Store items, requests, and logs as they're processed
-* **Request Tracking**: Track request response times, fingerprints, and parent-child relationships
-* **Comprehensive Logging**: Capture spider events, errors, and custom messages
-* **Flexible Schema**: Support for both auto-creation and existing table modes
-* **Modular Design**: Use individual components or the complete pipeline
-* **Production Ready**: Handles both development and production scenarios
-* **JSONB Storage**: Store complex item data as JSONB for flexible querying
+.. code-block:: python
 
-📚 Documentation Structure
--------------------------
+   ITEM_PIPELINES = {
+       'scrapy_item_ingest.DbInsertPipeline': 300,
+   }
 
+   EXTENSIONS = {
+       'scrapy_item_ingest.LoggingExtension': 500,
+   }
+
+   # Pick ONE of the two database config styles:
+   DB_URL = "postgresql://user:password@localhost:5432/database"
+   # Or discrete fields (no URL encoding needed):
+   # DB_HOST = "localhost"
+   # DB_PORT = 5432
+   # DB_USER = "user"
+   # DB_PASSWORD = "password"
+   # DB_NAME = "database"
+
+   # Optional
+   CREATE_TABLES = True
+   # JOB_ID = 1  # or omit to use spider name
+
+3) Run
+~~~~~~
+
+.. code-block:: bash
+
+   scrapy crawl your_spider
+
+Notes
+-----
+
+- If your password contains @ or $, URL‑encode them in `DB_URL` (e.g., `PAK@swat1$` -> `PAK%40swat1%24`).
+- Or use the discrete fields above to avoid encoding entirely.
+
+Docs
+----
 .. toctree::
-   :maxdepth: 2
-   :caption: Getting Started
+   :maxdepth: 1
 
    installation
    quickstart
    configuration
-
-.. toctree::
-   :maxdepth: 2
-   :caption: User Guide
-
-   user-guide/pipelines
-   user-guide/extensions
-   user-guide/database-schema
-   user-guide/advanced-usage
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Examples
-
-   examples/basic-setup
-   examples/advanced-configurations
-   examples/production-deployment
+   examples/recipes-basic
+   examples/recipes-items-only
+   examples/recipes-requests
+   examples/recipes-db-logging
    examples/troubleshooting
-
-.. toctree::
-   :maxdepth: 2
-   :caption: API Reference
-
-   api/pipelines
-   api/extensions
-   api/configuration
-   api/utilities
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Development
-
-   development/contributing
    development/changelog
-   development/roadmap
 
-🔗 Quick Links
---------------
+Links
+-----
 
-* :doc:`installation` - Get started with installation
-* :doc:`quickstart` - Basic usage examples
-* :doc:`user-guide/pipelines` - Pipeline components
-* :doc:`api/pipelines` - API reference
-* `GitHub Repository <https://github.com/fawadss1/scrapy_item_ingest>`_
-
-💡 Need Help?
-------------
-
-* Check out the :doc:`examples/troubleshooting` section
-* Review the :doc:`api/pipelines` for detailed API documentation
-* Visit our `GitHub Issues <https://github.com/fawadss1/scrapy_item_ingest/issues>`_ page
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+- GitHub: https://github.com/fawadss1/scrapy_item_ingest
+- License: MIT

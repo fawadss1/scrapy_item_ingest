@@ -47,6 +47,7 @@ The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`
 - Attached the DB log handler only to the spider’s base logger and the top-level `scrapy` logger to avoid propagation duplicates
 - Applied optional `LOG_DB_CAPTURE_LEVEL` (default falls back to `LOG_DB_LEVEL`) to increase capture detail for DB without changing console verbosity
 - Normalized schema for logs to consistently use `level` (instead of `type`)
+- Simplified and streamlined documentation and README; reduced pages to essentials
 
 ### Fixed
 - Import errors in external integrations expecting `DatabaseConnection` by providing a compatibility alias to `DBConnection`

@@ -1,114 +1,22 @@
-           try:
-               # Send error notification
-               if hasattr(self, 'send_error_alert'):
-                   self.send_error_alert(spider, failure)
-           except Exception as e:
-               spider.logger.warning(f"Error notification failed: {e}")
-
-See Also
---------
-
-* :doc:`../user-guide/extensions` - User guide for extensions
-* :doc:`../examples/advanced-configurations` - Advanced extension examples
-* :doc:`pipelines` - Pipeline API reference
 Extensions API Reference
 =======================
 
-This section provides detailed API documentation for all extension classes in Scrapy Item Ingest.
+Minimal, auto-generated API docs for extensions.
 
 .. currentmodule:: scrapy_item_ingest
 
-Extension Classes
-----------------
-
 LoggingExtension
-~~~~~~~~~~~~~~~
+----------------
 
 .. autoclass:: LoggingExtension
    :members:
-   :undoc-members:
    :show-inheritance:
 
-   Extension that captures spider events and log messages, storing them in the database for analysis and monitoring.
-
-   **Database Table:** ``job_logs``
-
-   **Schema:**
-
-   .. code-block:: sql
-
-      CREATE TABLE job_logs (
-          id BIGSERIAL PRIMARY KEY,
-          job_id INTEGER NOT NULL,
-          type VARCHAR(50) NOT NULL,
-          message TEXT NOT NULL,
-          created_at TIMESTAMPTZ NOT NULL
-      );
-
-   **Configuration:**
-
-   .. code-block:: python
-
-      # settings.py
-      EXTENSIONS = {
-          'scrapy_item_ingest.LoggingExtension': 500,
-      }
-
-   **Captured Events:**
-
-   * Spider lifecycle events (opened, closed, idle)
-   * Error events and exceptions
-   * Custom log messages from spider
-   * System warnings and notifications
-
-   **Methods:**
-
-   .. method:: __init__(settings)
-
-      Initialize the extension with Scrapy settings.
-
-      :param settings: Scrapy settings object
-      :type settings: scrapy.settings.Settings
-
-   .. method:: spider_opened(spider)
-
-      Called when spider is opened. Logs spider start event.
-
-      :param spider: The spider instance
-      :type spider: scrapy.Spider
-
-   .. method:: spider_closed(spider, reason)
-
-      Called when spider is closed. Logs spider completion with statistics.
-
-      :param spider: The spider instance
-      :type spider: scrapy.Spider
-      :param reason: Reason for spider closure
-      :type reason: str
-
-   .. method:: spider_error(failure, response, spider)
-
-      Called when spider encounters an error.
-
-      :param failure: The failure instance
-      :type failure: twisted.python.failure.Failure
-      :param response: The response that caused the error (if any)
-      :type response: scrapy.Response or None
-      :param spider: The spider instance
-      :type spider: scrapy.Spider
-
-   .. method:: item_scraped(item, response, spider)
-
-      Called when an item is scraped. Logs item processing events.
-
-      :param item: The scraped item
-      :type item: dict or scrapy.Item
-      :param response: The response from which the item was scraped
-      :type response: scrapy.Response
-      :param spider: The spider instance
-      :type spider: scrapy.Spider
-
-   .. method:: item_dropped(item, response, exception, spider)
+Notes
+-----
+- Persists spider and selected Scrapy logs to `job_logs`.
+- Configure inclusion/exclusion via settings: `LOG_DB_LEVEL`, `LOG_DB_CAPTURE_LEVEL`, `LOG_DB_LOGGERS`, `LOG_DB_EXCLUDE_LOGGERS`, `LOG_DB_EXCLUDE_PATTERNS`.
+- See `configuration` for settings and Quickstart/Examples for usage.
 
       Called when an item is dropped by a pipeline.
 
