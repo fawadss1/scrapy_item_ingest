@@ -59,7 +59,30 @@ For support and questions:
 
 ## Changelog
 
-### v0.1.2 (Current)
+### v0.2.0 (2025-11-11) — Current
+
+- Database connection: automatic DSN normalization to safely handle special characters in credentials (e.g., `@`, `$`) without modifying your settings
+- Unified DB access across pipelines and extensions via `DatabaseConnection` (singleton) with `connect/execute/commit/rollback/close`
+- Logging extension overhaul:
+  - Capture Scrapy default (framework) logs in addition to spider logs
+  - Attach DB handler to spider logger and top-level `scrapy` logger only to avoid duplicates via propagation
+  - Console-like formatting using `LOG_FORMAT` and `LOG_DATEFORMAT`
+  - Fine-grained filtering: allowlist by logger namespaces plus exclusions by logger and message substrings
+  - Built-in de-duplication to suppress repeated lines within a small time window
+  - Error throttling to stop DB logging after the first write failure (prevents spam)
+- Schema consistency: logs table consistently uses `level` column (not `type`)
+- Backwards compatibility: `DatabaseConnection` remains alias to `DBConnection`
+
+New optional settings:
+- `LOG_DB_LEVEL` (default: `DEBUG`) — minimum level stored in DB
+- `LOG_DB_CAPTURE_LEVEL` (default: same as `LOG_DB_LEVEL`) — capture level for attached loggers (DB only; does not affect console)
+- `LOG_DB_LOGGERS` — additional allowed logger prefixes (defaults always include `[spider.name, 'scrapy']`)
+- `LOG_DB_EXCLUDE_LOGGERS` (default: `['scrapy.core.scraper']`)
+- `LOG_DB_EXCLUDE_PATTERNS` (default: `['Scraped from <']`)
+- `LOG_DB_BATCH_SIZE` — batch size for DB inserts
+- `LOG_DB_DEDUP_TTL` — seconds to suppress duplicate messages
+
+### v0.1.2
 
 - Initial release
 - Core pipeline functionality for items, requests, and logs

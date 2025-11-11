@@ -28,6 +28,40 @@ The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`
 - Enhanced database connection security with SSL support
 - Input validation improvements to prevent SQL injection
 
+[0.2.0] - 2025-11-11
+-------------------
+
+### Added
+- Automatic DSN normalization for PostgreSQL `DB_URL` to safely handle special characters in credentials (e.g., `@`, `$`)
+- Unified `DatabaseConnection` singleton API used across pipelines and extensions (`connect/execute/commit/rollback/close`)
+- Logging extension now capable of capturing Scrapy framework logs (Zyte-like) in addition to spider logs
+- Console-like formatter in DB logs honoring `LOG_FORMAT` and `LOG_DATEFORMAT`
+- Fine-grained logging controls for DB persistence:
+  - Allowlist by logger namespaces via `LOG_DB_LOGGERS`
+  - Exclude by namespaces via `LOG_DB_EXCLUDE_LOGGERS`
+  - Exclude by message substrings via `LOG_DB_EXCLUDE_PATTERNS`
+  - Batch size via `LOG_DB_BATCH_SIZE`
+  - Duplicate suppression via `LOG_DB_DEDUP_TTL`
+
+### Changed
+- Attached the DB log handler only to the spider’s base logger and the top-level `scrapy` logger to avoid propagation duplicates
+- Applied optional `LOG_DB_CAPTURE_LEVEL` (default falls back to `LOG_DB_LEVEL`) to increase capture detail for DB without changing console verbosity
+- Normalized schema for logs to consistently use `level` (instead of `type`)
+
+### Fixed
+- Import errors in external integrations expecting `DatabaseConnection` by providing a compatibility alias to `DBConnection`
+- Eliminated repeated DB logging errors by throttling after the first failure
+- Reduced noise by default: excluded `scrapy.core.scraper` and messages containing `Scraped from <` from DB persistence
+
+### Settings (new/updated)
+- `LOG_DB_LEVEL`: minimum level stored in DB (default: `DEBUG`)
+- `LOG_DB_CAPTURE_LEVEL`: capture level for attached loggers (DB only)
+- `LOG_DB_LOGGERS`: additional allowed logger prefixes (defaults always include `[spider.name, 'scrapy']`)
+- `LOG_DB_EXCLUDE_LOGGERS`: logger namespaces to exclude (default: `['scrapy.core.scraper']`)
+- `LOG_DB_EXCLUDE_PATTERNS`: message substrings to exclude (default: `['Scraped from <']`)
+- `LOG_DB_BATCH_SIZE`: DB insert batch size
+- `LOG_DB_DEDUP_TTL`: seconds to suppress duplicates
+
 [0.1.1] - 2025-07-21
 -------------------
 

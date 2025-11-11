@@ -9,7 +9,7 @@ except FileNotFoundError:
 
 setup(
     name="scrapy_item_ingest",
-    version="0.1.2",
+    version="0.2.0",
     description="Scrapy extension for database ingestion with job/spider tracking",
     long_description=long_description,
     long_description_content_type="text/markdown",

@@ -3,10 +3,10 @@ Roadmap
 
 This document outlines the planned development direction for Scrapy Item Ingest. The roadmap is organized by major version releases with estimated timelines and priorities.
 
-Current Version: 0.1.2
+Current Version: 0.2.0
 ----------------------
 
-**Status**: ✅ Released (July 2025)
+**Status**: ✅ Released (Nov 2025)
 
 **Key Features Delivered:**
 - Core pipeline functionality (items, requests, logging)
@@ -15,40 +15,6 @@ Current Version: 0.1.2
 - Production deployment guides
 - Basic monitoring and error handling
 
-Version 0.2.0 - Enhanced Performance
------------------------------------
-
-**Target Release**: Q4 2025
-
-**Priority**: High
-
-### Planned Features
-
-**🚀 Performance Optimizations**
-- Advanced batch processing with configurable batch sizes
-- Connection pooling optimization for high-throughput scenarios
-- Memory usage optimization for large-scale crawling
-- Database query optimization and caching strategies
-
-**📊 Monitoring & Metrics**
-- Prometheus metrics integration
-- Grafana dashboard templates
-- Real-time performance monitoring
-- Health check endpoints
-
-**🔧 Configuration Enhancements**
-- YAML/JSON configuration file support
-- Environment-specific configuration profiles
-- Dynamic configuration reloading
-- Configuration validation improvements
-
-**📈 Scalability Features**
-- Redis-based job queue system for distributed crawling
-- Master-worker architecture support
-- Horizontal scaling capabilities
-- Load balancing strategies
-
-### Technical Details
 
 **Batch Processing Enhancement:**
 
