@@ -23,6 +23,14 @@ The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`
 - Enhanced database connection security with SSL support
 - Input validation improvements to prevent SQL injection
 
+
+[0.2.3] - 2025-11-21
+--------------------
+
+### Fixed
+- Removed extra loging from [scrapy_item_ingest.pipelines.items]
+
+
 [0.2.2] - 2025-11-21
 --------------------
 

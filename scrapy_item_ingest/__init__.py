@@ -12,7 +12,7 @@ Main Components:
 - RequestsPipeline: Standalone requests tracking pipeline
 """
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 __author__ = "Fawad Ali"
 __description__ = "Scrapy extension for database ingestion with job/spider tracking"
 
