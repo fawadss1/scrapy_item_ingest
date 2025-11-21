@@ -16,17 +16,23 @@ The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`
 - Webhook notifications for real-time updates
 - Custom serialization handlers for complex data types
 
-### Changed
-- Improved error handling with automatic retry logic
-- Enhanced database schema with partitioning support
-- Better memory management for large-scale operations
-
 ### Deprecated
 - Legacy table naming conventions (will be removed in v2.0.0)
 
 ### Security
 - Enhanced database connection security with SSL support
 - Input validation improvements to prevent SQL injection
+
+[0.2.2] - 2025-11-21
+--------------------
+
+### Changed
+- Simplified the logging extension to only attach to the root logger, which prevents log duplication and captures all log sources.
+- Removed complex and unnecessary logging settings (`LOG_DB_LOGGERS`, `LOG_DB_EXCLUDE_LOGGERS`, `LOG_DB_EXCLUDE_PATTERNS`, `LOG_DB_DEDUP_TTL`, `LOG_DB_CAPTURE_LEVEL`). The extension now relies on the standard Scrapy `LOG_LEVEL`.
+
+### Fixed
+- Resolved an issue where logs from the `root` logger were not being captured.
+- Fixed a log duplication issue caused by attaching the database handler to multiple loggers in the same hierarchy.
 
 [0.2.0] - 2025-11-11
 -------------------
