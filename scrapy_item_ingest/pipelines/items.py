@@ -2,9 +2,11 @@
 Items pipeline for storing scraped items.
 """
 import logging
+
 from itemadapter import ItemAdapter
 from scrapy.exceptions import DropItem
 from .base import BasePipeline
+
 from ..utils.serialization import serialize_item_data
 from ..utils.time import get_current_datetime
 

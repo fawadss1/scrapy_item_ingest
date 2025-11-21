@@ -2,8 +2,8 @@
 Base extension functionality for scrapy_item_ingest.
 """
 import logging
-from ..config.settings import validate_settings
-from scrapy_item_ingest.config.settings import Settings
+
+from scrapy_item_ingest.config.settings import Settings, validate_settings
 from ..utils.time import get_current_datetime
 from ..database.connection import DatabaseConnection
 from ..database.schema import SchemaManager
@@ -45,13 +45,11 @@ class BaseExtension:
     def _ensure_logs_table_exists(self):
         """Create logs table if it doesn't exist (only if create_tables is True)."""
         if not self.settings.create_tables:
-            logger.info("Table creation disabled. Skipping logs table creation.")
             return
         try:
             self._schema_manager.create_logs_table()
             self._db.commit()
         except Exception as e:
-            logger.error(f"Failed to create logs table: {e}")
             self._db.rollback()
 
     def _log_to_database(self, spider, log_level, message):
@@ -78,9 +76,6 @@ class BaseExtension:
                 ),
             )
             self._db.commit()
-            logger.info(f"Logged {log_level} for {identifier_column} {identifier_value}")
         except Exception as e:
             # Disable further DB logging to avoid spamming errors
             self._db_logging_enabled = False
-            logger.warning(
-                f"Disabling DB logging after error: {e}. Further log records will be skipped for this run.")

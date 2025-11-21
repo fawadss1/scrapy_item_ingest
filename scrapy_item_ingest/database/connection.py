@@ -2,10 +2,10 @@
 
 import logging
 from typing import Optional, Iterable, Any
+from urllib.parse import urlsplit, urlunsplit, quote, unquote
 
 import psycopg2
 from psycopg2 import OperationalError
-from urllib.parse import urlsplit, urlunsplit, quote, unquote
 
 
 class DBConnection:
@@ -88,7 +88,6 @@ class DBConnection:
                     dbname=settings.get("DB_NAME"),
                 )
             self._connection.autocommit = False  # manual commit per item
-            self._logger.info(f"✅ Database connection established ({source}).")
         except OperationalError as e:
             # Mask password in logs by not printing full URL; provide hint
             self._logger.error(
@@ -146,7 +145,6 @@ class DBConnection:
         """Close connection gracefully when the spider ends."""
         if self._connection and not self._connection.closed:
             self._connection.close()
-            self._logger.info("🧹 Database connection closed cleanly.")
 
 
 # Backwards compatibility: older code imports `DatabaseConnection`

@@ -2,7 +2,9 @@
 Requests pipeline for tracking request information.
 """
 import logging
+
 from scrapy import signals
+
 from .base import BasePipeline
 from ..utils.fingerprint import get_request_fingerprint
 from ..utils.time import get_current_datetime
@@ -43,18 +45,15 @@ class RequestsPipeline(BasePipeline):
                 parent_url = self.current_response_url
                 if parent_url in self.url_to_id_map:
                     parent_id = self.url_to_id_map[parent_url]
-                    logger.info(f"Found parent ID {parent_id} from current response URL: {parent_url}")
 
             # Method 2: Check request meta for referer
             if not parent_id and hasattr(request, 'meta') and request.meta:
                 if 'referer' in request.meta:
                     parent_url = request.meta['referer']
-                    logger.info(f"Found referer in meta: {parent_url}")
 
                     # Look up in our URL mapping first (faster)
                     if parent_url in self.url_to_id_map:
                         parent_id = self.url_to_id_map[parent_url]
-                        logger.info(f"Found parent ID {parent_id} from URL mapping")
                     else:
                         # Look up in database
                         try:
@@ -64,22 +63,12 @@ class RequestsPipeline(BasePipeline):
                                 parent_id = result[0]
                                 # Cache the result
                                 self.url_to_id_map[parent_url] = parent_id
-                                logger.info(f"Found parent ID {parent_id} from database lookup")
+
                         except Exception as e:
                             logger.warning(f"Could not look up parent ID by referer URL: {e}")
 
-                # Debug: Log request meta information
-                logger.debug(f"Request URL: {request.url}")
-                logger.debug(f"Request meta keys: {list(request.meta.keys()) if request.meta else 'None'}")
-                if 'depth' in request.meta:
-                    logger.debug(f"Request depth: {request.meta['depth']}")
-
         except Exception as e:
             logger.warning(f"Could not extract parent request info: {e}")
-
-        # If we still don't have parent info, log for debugging
-        if not parent_id and not parent_url:
-            logger.debug(f"No parent found for request: {request.url}")
 
         return parent_id, parent_url
 
@@ -87,7 +76,6 @@ class RequestsPipeline(BasePipeline):
         """Log request to database with complete information"""
         job_id = self.settings.get_identifier_value(spider)
 
-        logger.info(f"Logging request for job_id {job_id}: {request.url}")
         fingerprint = get_request_fingerprint(request)
         parent_id, parent_url = self._get_parent_request_info(request, spider)
         created_at = get_current_datetime(self.settings)
@@ -131,14 +119,6 @@ class RequestsPipeline(BasePipeline):
 
                 self.db.commit()
 
-                log_msg = f"Successfully logged request for job_id {job_id} with fingerprint {fingerprint} (ID: {record_id})"
-                if response:
-                    log_msg += f" (status: {response.status}, response_time: {response_time:.3f}s)" if response_time else f" (status: {response.status})"
-                if parent_id:
-                    log_msg += f" (parent ID: {parent_id}, parent URL: {parent_url})"
-                else:
-                    log_msg += " (no parent found)"
-                logger.info(log_msg)
         except Exception as e:
             logger.error(f"Failed to log request: {e}")
             self.db.rollback()
@@ -148,17 +128,10 @@ class RequestsPipeline(BasePipeline):
         fingerprint = get_request_fingerprint(request)
         current_time = get_current_datetime(self.settings).timestamp()
         self.request_start_times[fingerprint] = current_time
-        
-        job_id = self.settings.get_identifier_value(spider)
-        logger.debug(f"Request scheduled for job_id {job_id}: {request.url} (fingerprint: {fingerprint})")
 
     def response_received(self, response, request, spider):
         """Called when a response is received - log request with complete info"""
-        job_id = self.settings.get_identifier_value(spider)
 
-        logger.info(f"Response received for job_id {job_id}: {response.url} (status: {response.status})")
-
-        # Set current response URL for parent tracking
         self.current_response_url = response.url
 
         # Log the request with complete response information

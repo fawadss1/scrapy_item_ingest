@@ -2,6 +2,7 @@
 Base pipeline functionality for scrapy_item_ingest.
 """
 import logging
+
 from ..config.settings import Settings, validate_settings
 from ..database.connection import DatabaseConnection
 from ..database.schema import SchemaManager
@@ -37,13 +38,10 @@ class BasePipeline:
         # Ensure tables exist
         self.schema_manager.ensure_tables_exist()
 
-        logger.info(f"Pipeline opened for {self.settings.get_identifier_column()}: {self.settings.get_identifier_value(spider)}")
-
     def close_spider(self, spider):
         """Called when spider is closed"""
         if self.db:
             self.db.close()
-        logger.info(f"Pipeline closed for {self.settings.get_identifier_column()}: {self.settings.get_identifier_value(spider)}")
 
     def get_identifier_info(self, spider):
         """Get identifier column and value for the spider"""
