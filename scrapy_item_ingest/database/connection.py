@@ -1,7 +1,7 @@
 # scrapy_item_ingest/database/connection.py
 
 import logging
-from typing import Optional, Iterable, Any
+from typing import Optional, Any, Sequence
 from urllib.parse import urlsplit, urlunsplit, quote, unquote
 
 import psycopg2
@@ -72,8 +72,6 @@ class DBConnection:
             if self._db_url:
                 source = "db_url"
                 dsn = self._normalize_dsn(self._db_url)
-                if dsn != self._db_url:
-                    self._logger.info("Normalized DB_URL for connection (credential encoding applied).")
                 self._connection = psycopg2.connect(dsn)
             else:
                 # Lazy import to avoid module-level dependency on Scrapy
@@ -111,7 +109,7 @@ class DBConnection:
             self._initialize_connection()
         return self._connection.cursor()
 
-    def execute(self, sql: str, params: Optional[Iterable[Any]] = None):
+    def execute(self, sql: str, params: Sequence[Any] = None):
         """Execute a SQL statement.
         Returns the first row (tuple) if the statement produces a result set
         (e.g., SELECT or INSERT ... RETURNING), otherwise returns None.
