@@ -1,25 +1,21 @@
 """
 Request fingerprint utilities for generating unique request identifiers.
 """
-import hashlib
 import logging
+
+from scrapy.utils.request import fingerprint
 
 logger = logging.getLogger(__name__)
 
 
 def get_request_fingerprint(request):
-    """Generate fingerprint for the request"""
-    try:
-        from scrapy.utils.request import request_fingerprint
-        return request_fingerprint(request)
-    except Exception as e:
-        logger.warning(f"Could not generate fingerprint: {e}")
-        # Fallback fingerprint generation
-        fingerprint_data = f"{request.method}:{request.url}"
-        return hashlib.sha1(fingerprint_data.encode()).hexdigest()
+    """Generate a fingerprint for the request"""
 
+    fp = fingerprint(request)
 
-def generate_url_fingerprint(method, url):
-    """Generate a simple fingerprint for URL and method combination"""
-    fingerprint_data = f"{method}:{url}"
-    return hashlib.sha1(fingerprint_data.encode()).hexdigest()
+    if isinstance(fp, bytes):
+        fp = fp.hex()
+
+    fp = fp.replace("\\x", "")
+
+    return fp
