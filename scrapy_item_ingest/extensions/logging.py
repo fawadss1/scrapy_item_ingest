@@ -16,18 +16,28 @@ from .base import BaseExtension
 logger = logging.getLogger(__name__)
 
 
+class ScrapyAndRootFilter(logging.Filter):
+    """
+    A logging filter that allows records from the 'root' logger and any logger
+    within the 'scrapy' namespace.
+    """
+    def filter(self, record: logging.LogRecord) -> bool:
+        # Allow logs from the spider itself (which might not be in 'scrapy' namespace)
+        if hasattr(record, 'spider_name') and record.name == getattr(record, 'spider_name', None):
+            return True
+        return record.name == 'root' or record.name.startswith('scrapy')
+
+
 class DatabaseLogHandler(logging.Handler):
     """
-    Custom logging handler to save log records to the database in batches.
+    Custom logging handler to save log records to the database in real-time.
     """
     _local = threading.local()
 
-    def __init__(self, extension: 'LoggingExtension', spider: Spider, batch_size: int):
+    def __init__(self, extension: 'LoggingExtension', spider: Spider):
         super().__init__()
         self.extension = extension
         self.spider = spider
-        self.batch_size = batch_size
-        self._buffer: List[tuple[Spider, str, str]] = []
 
     def emit(self, record: logging.LogRecord):
         if getattr(self._local, 'in_emit', False):
@@ -39,36 +49,17 @@ class DatabaseLogHandler(logging.Handler):
 
         self._local.in_emit = True
         try:
+            # Add spider name to record for the filter
+            record.spider_name = self.spider.name
             msg = self.format(record)
             level = record.levelname
-            self._buffer.append((self.spider, level, msg))
-            if len(self._buffer) >= self.batch_size:
-                self.flush()
+            # Log directly to the database in real-time
+            self.extension._log_to_database(self.spider, level, msg)
         except Exception:
             # Use logger directly to avoid recursion if formatting fails
             logger.exception("Error in DatabaseLogHandler.emit")
         finally:
             self._local.in_emit = False
-
-    def flush(self):
-        if not self._buffer:
-            return
-        
-        records_to_send = self._buffer
-        self._buffer = []
-
-        try:
-            for spider, level, msg in records_to_send:
-                self.extension._log_to_database(spider, level, msg)
-        except Exception:
-            logger.exception("Failed to flush log buffer to database.")
-
-    def close(self):
-        """
-        Flush any buffered logs and close the handler.
-        """
-        self.flush()
-        super().close()
 
 
 class LoggingExtension(BaseExtension):
@@ -80,8 +71,6 @@ class LoggingExtension(BaseExtension):
         super().__init__(settings)
         crawler_settings = self.settings.crawler_settings
         self.log_level = crawler_settings.get('LOG_LEVEL', 'INFO').upper()
-        # Use hardcoded defaults for batch size and format
-        self.batch_size = 5
         self.log_format = '%(asctime)s [%(name)s] %(levelname)s: %(message)s'
         self.log_dateformat = '%Y-%m-%d %H:%M:%S'
 
@@ -94,25 +83,23 @@ class LoggingExtension(BaseExtension):
         ext = super().from_crawler(crawler)
         crawler.signals.connect(ext.spider_opened, signal=signals.spider_opened)
         crawler.signals.connect(ext.spider_closed, signal=signals.spider_closed)
-        crawler.signals.connect(ext.spider_error, signal=signals.spider_error)
-        crawler.signals.connect(ext.item_dropped, signal=signals.item_dropped)
         crawler.signals.connect(ext.engine_stopped, signal=signals.engine_stopped)
         return ext
 
     def spider_opened(self, spider: Spider):
         """Called when a spider is opened."""
-        handler = DatabaseLogHandler(self, spider, self.batch_size)
+        handler = DatabaseLogHandler(self, spider)
         level = getattr(logging, self.log_level, logging.INFO)
         handler.setLevel(level)
         formatter = logging.Formatter(fmt=self.log_format, datefmt=self.log_dateformat)
         handler.setFormatter(formatter)
+        
+        handler.addFilter(ScrapyAndRootFilter())
+        
         self._db_log_handler = handler
 
-        # Attach the handler ONLY to the root logger.
-        # This captures all logs from all libraries due to propagation.
         root_logger = logging.getLogger()
         
-        # Avoid adding duplicate handlers if a spider is run multiple times in the same process
         if not any(isinstance(h, DatabaseLogHandler) for h in root_logger.handlers):
             root_logger.addHandler(handler)
             self._root_logger_ref = root_logger
@@ -129,24 +116,14 @@ class LoggingExtension(BaseExtension):
         self._cleanup()
 
     def engine_stopped(self):
-        """Called when the Scrapy engine stops to ensure logs are flushed."""
+        """Called when the Scrapy engine stops."""
         self._cleanup()
 
     def _cleanup(self):
-        """Removes the log handler and flushes any remaining logs."""
+        """Removes the log handler."""
         if self._db_log_handler and self._root_logger_ref:
             self._root_logger_ref.removeHandler(self._db_log_handler)
             self._db_log_handler.close()
 
             self._db_log_handler = None
             self._root_logger_ref = None
-
-    def spider_error(self, failure, response, spider: Spider):
-        """Logs spider errors to the database."""
-        message = f"Spider error on {response.url}:\n{failure.getTraceback()}"
-        spider.logger.error(message)
-
-    def item_dropped(self, item, response, spider: Spider, exception: Exception):
-        """Logs dropped items to the database."""
-        message = f"Item dropped: {exception} from {response.url}"
-        spider.logger.warning(message)
